@@ -240,8 +240,8 @@ function update(dt) {
     if (guy.plantT <= 0) guy.state = "idle";
   } else {
     // idle or walk: arrow keys take priority over a click target
-    const kx = (keys.has("ArrowRight") ? 1 : 0) - (keys.has("ArrowLeft") ? 1 : 0);
-    const ky = (keys.has("ArrowDown") ? 1 : 0) - (keys.has("ArrowUp") ? 1 : 0);
+    const kx = (keys.has("right") ? 1 : 0) - (keys.has("left") ? 1 : 0);
+    const ky = (keys.has("down") ? 1 : 0) - (keys.has("up") ? 1 : 0);
     const step = WALK_SPEED * dt;
     if (pendingTalk && !kx && !ky) {
       if (Math.hypot(pendingTalk.x - guy.x, pendingTalk.y - guy.y) <= TALK_RANGE) {
@@ -358,27 +358,28 @@ function drawMarker(m, time) {
 }
 
 // ---------- input ----------
-const ARROWS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]);
+const MOVE_KEYS = {
+  ArrowUp: "up", KeyW: "up",
+  ArrowDown: "down", KeyS: "down",
+  ArrowLeft: "left", KeyA: "left",
+  ArrowRight: "right", KeyD: "right",
+};
 const keys = new Set();
 window.addEventListener("keydown", (e) => {
   if (e.code === "Space") {
     e.preventDefault();
     spawnGuy();
-  } else if (ARROWS.has(e.code)) {
+  } else if (MOVE_KEYS[e.code]) {
     e.preventDefault();
-    keys.add(e.code);
+    keys.add(MOVE_KEYS[e.code]);
   }
 });
-window.addEventListener("keyup", (e) => keys.delete(e.code));
+window.addEventListener("keyup", (e) => keys.delete(MOVE_KEYS[e.code]));
 window.addEventListener("blur", () => keys.clear());
 
 window.addEventListener("contextmenu", (e) => {
   e.preventDefault();
-  if (!guy || guy.state === "thrown" || guy.state === "bounce") return;
-  stopTalking();
-  guy.target = { x: e.clientX, y: e.clientY };
-  guy.state = "walk";
-  marker = { x: e.clientX, y: e.clientY };
+  walkTo(e.clientX, e.clientY);
 });
 
 // the canvas sits above the hint, so hint clicks are handled here —
@@ -398,7 +399,7 @@ window.addEventListener("mousedown", (e) => {
     spawnGuy();
     return;
   }
-  interact(e.clientX, e.clientY);
+  if (!interact(e.clientX, e.clientY)) walkTo(e.clientX, e.clientY);
 });
 
 // touch: first tap summons him; tap text to hear it; tap anywhere else to send him there
@@ -412,16 +413,7 @@ canvas.addEventListener(
       spawnGuy();
       return;
     }
-    if (LINES.some((l) => inRect(l.rect, x, y))) {
-      interact(x, y);
-      return;
-    }
-    if (guy.state !== "thrown" && guy.state !== "bounce") {
-      stopTalking();
-      guy.target = { x, y };
-      guy.state = "walk";
-      marker = { x, y };
-    }
+    if (!interact(x, y)) walkTo(x, y);
   },
   { passive: false }
 );
@@ -439,12 +431,21 @@ function interact(x, y) {
   const linked = LINES.find((l) => l.link && inRect(l.linkRect, x, y));
   if (linked) {
     window.location.href = linked.link.url;
-    return;
+    return true;
   }
-  if (!guy) return; // speech only works once the sprite has been summoned
+  if (!guy) return false; // speech only works once the sprite has been summoned
   const line = LINES.find((l) => inRect(l.rect, x, y));
-  if (!line) return;
+  if (!line) return false;
   pendingTalk = { x, y, line }; // walk over there first; update() starts the talking
+  return true;
+}
+
+function walkTo(x, y) {
+  if (!guy || guy.state === "thrown" || guy.state === "bounce") return;
+  stopTalking();
+  guy.target = { x, y };
+  guy.state = "walk";
+  marker = { x, y };
 }
 
 function startTalking(spot) {
