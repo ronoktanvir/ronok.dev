@@ -156,9 +156,33 @@ const THROWN = [
 ];
 THROWN[2].atPlant = true; // hat guy says "Ow." at the face-plant, not mid-air
 
+const ALL_VOICES = [...LINES.flatMap((l) => l.voices.flat()), ...THROWN];
 let talking = null; // the voice currently being read aloud
-for (const v of [...LINES.flatMap((l) => l.voices.flat()), ...THROWN])
-  v.audio.addEventListener("ended", () => (talking = null));
+for (const v of ALL_VOICES) v.audio.addEventListener("ended", () => (talking = null));
+
+// mobile browsers only allow play() for elements touched during a user gesture,
+// but our clips often start later (when he reaches the text) — so on the first
+// gesture, prime every clip with a muted play/pause to unlock it
+let audioUnlocked = false;
+function unlockAudio() {
+  if (audioUnlocked) return;
+  audioUnlocked = true;
+  for (const v of ALL_VOICES) {
+    if (v === talking) continue;
+    const a = v.audio;
+    a.muted = true;
+    const p = a.play();
+    if (p)
+      p.then(() => {
+        if (v !== talking) {
+          a.pause();
+          a.currentTime = 0;
+        }
+        a.muted = false;
+      }).catch(() => (a.muted = false));
+    else a.muted = false;
+  }
+}
 const mouthOpen = () =>
   talking.mouth[Math.min(Math.floor(talking.audio.currentTime * MOUTH_FPS), talking.mouth.length - 1)] === "1";
 
@@ -175,6 +199,8 @@ let marker = null;      // {x, y} right-click destination arrow
 let pendingTalk = null; // {x, y} text he's walking toward to read
 
 function spawnGuy() {
+  // one toss at a time: ignore respawns until the current flight lands
+  if (guy && (guy.state === "thrown" || guy.state === "bounce")) return;
   const fromLeft = Math.random() < 0.5;
   const startX = fromLeft ? -80 : W + 80;
   const startY = H * (0.3 + Math.random() * 0.4);
@@ -212,7 +238,7 @@ function spawnGuy() {
   } else if (tv) {
     talking = tv;
     tv.audio.currentTime = 0;
-    tv.audio.play();
+    tv.audio.play().catch(() => {});
   }
 }
 
@@ -251,7 +277,7 @@ function update(dt) {
         if (guy.tossVoice) {
           talking = guy.tossVoice;
           talking.audio.currentTime = 0;
-          talking.audio.play();
+          talking.audio.play().catch(() => {});
           guy.tossVoice = null;
         }
       }
@@ -389,10 +415,12 @@ const keys = new Set();
 window.addEventListener("keydown", (e) => {
   if (e.code === "Space") {
     e.preventDefault();
-    spawnGuy();
+    if (!e.repeat) spawnGuy(); // holding space shouldn't machine-gun respawns
+    unlockAudio();
   } else if (MOVE_KEYS[e.code]) {
     e.preventDefault();
     keys.add(MOVE_KEYS[e.code]);
+    unlockAudio();
   }
 });
 window.addEventListener("keyup", (e) => keys.delete(MOVE_KEYS[e.code]));
@@ -416,11 +444,9 @@ function hintClickable(x, y) {
 
 window.addEventListener("mousedown", (e) => {
   if (e.button !== 0) return;
-  if (hintClickable(e.clientX, e.clientY)) {
-    spawnGuy();
-    return;
-  }
-  if (!interact(e.clientX, e.clientY)) walkTo(e.clientX, e.clientY);
+  if (hintClickable(e.clientX, e.clientY)) spawnGuy();
+  else if (!interact(e.clientX, e.clientY)) walkTo(e.clientX, e.clientY);
+  unlockAudio();
 });
 
 // touch: first tap summons him; tap text to hear it; tap anywhere else to send him there
@@ -430,11 +456,9 @@ canvas.addEventListener(
     e.preventDefault(); // no scroll/zoom, no synthetic mouse events
     const t = e.touches[0];
     const x = t.clientX, y = t.clientY;
-    if (!guy || hintClickable(x, y)) {
-      spawnGuy();
-      return;
-    }
-    if (!interact(x, y)) walkTo(x, y);
+    if (!guy || hintClickable(x, y)) spawnGuy();
+    else if (!interact(x, y)) walkTo(x, y);
+    unlockAudio();
   },
   { passive: false }
 );
@@ -474,7 +498,7 @@ function startTalking(spot) {
   const takes = spot.line.voices[guy ? guy.variant : 0];
   talking = takes[Math.floor(Math.random() * takes.length)]; // lines with multiple takes alternate
   talking.audio.currentTime = 0;
-  talking.audio.play();
+  talking.audio.play().catch(() => {});
   if (guy) {
     // plop down facing the text he's reading
     if (Math.abs(spot.x - guy.x) > 2) guy.facing = spot.x > guy.x ? 1 : -1;
