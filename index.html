@@ -148,6 +148,14 @@ const LINES = [
     rect: null,
   },
 ];
+// ---------- footer links ----------
+const FOOTER = [
+  { label: "github", url: "https://github.com/ronoktanvir", color: "#1a1a1a", rect: null },
+  { label: "linkedin", url: "https://www.linkedin.com/in/ronok-tanvir/", color: "#0a66c2", rect: null },
+  { label: "ronoktanvir@berkeley.edu", url: "mailto:ronoktanvir@berkeley.edu", color: "#555", rect: null },
+  { label: "coldpillowofdeath", url: null, color: "#107c10", xbox: true, rect: null }, // gamertag, just for fun
+];
+
 // toss reactions per variant: "HEY!!! ouch!", "oh dear... Ow! jeez.", "[emphasis] Ow. That hurt."
 const THROWN = [
   voice("thrown.mp3", "000011101110111000000000000000000000000000001110111000111000000000000000000000000111011101110111000111000111011000000000"),
@@ -464,7 +472,9 @@ canvas.addEventListener(
 );
 
 window.addEventListener("mousemove", (e) => {
-  const overLink = LINES.some((l) => l.link && inRect(l.linkRect, e.clientX, e.clientY));
+  const overLink =
+    LINES.some((l) => l.link && inRect(l.linkRect, e.clientX, e.clientY)) ||
+    FOOTER.some((f) => f.url && inRect(f.rect, e.clientX, e.clientY));
   const overText = guy && LINES.some((l) => inRect(l.rect, e.clientX, e.clientY));
   document.body.style.cursor =
     overLink || hintClickable(e.clientX, e.clientY) ? "pointer" : overText ? SPEAKER_CURSOR : "default";
@@ -476,6 +486,11 @@ function interact(x, y) {
   const linked = LINES.find((l) => l.link && inRect(l.linkRect, x, y));
   if (linked) {
     window.location.href = linked.link.url;
+    return true;
+  }
+  const foot = FOOTER.find((f) => f.url && inRect(f.rect, x, y));
+  if (foot) {
+    window.location.href = foot.url;
     return true;
   }
   if (!guy) return false; // speech only works once the sprite has been summoned
@@ -516,6 +531,42 @@ function stopTalking() {
   talking = null;
 }
 
+function drawFooter() {
+  const FS = Math.round(15 * Math.min(1, W / 600));
+  const GAP = 26;
+  const ORB = FS * 0.55; // xbox orb radius
+  ctx.font = "500 " + FS + "px Avenir Next, Futura, Helvetica, sans-serif";
+  ctx.textAlign = "left";
+  const widths = FOOTER.map((f) => ctx.measureText(f.label).width + (f.xbox ? ORB * 2 + 6 : 0));
+  let x = W / 2 - (widths.reduce((a, b) => a + b, 0) + GAP * (FOOTER.length - 1)) / 2;
+  const by = H - 22;
+  FOOTER.forEach((f, i) => {
+    let tx = x;
+    if (f.xbox) {
+      // little xbox orb
+      const cx = x + ORB, cy = by - FS * 0.32;
+      ctx.fillStyle = "#107c10";
+      ctx.beginPath();
+      ctx.arc(cx, cy, ORB, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = FS * 0.14;
+      ctx.lineCap = "round";
+      const r = ORB * 0.5;
+      ctx.beginPath();
+      ctx.moveTo(cx - r, cy - r); ctx.quadraticCurveTo(cx, cy, cx + r, cy + r);
+      ctx.moveTo(cx + r, cy - r); ctx.quadraticCurveTo(cx, cy, cx - r, cy + r);
+      ctx.stroke();
+      tx += ORB * 2 + 6;
+    }
+    ctx.fillStyle = f.color;
+    ctx.fillText(f.label, tx, by);
+    f.rect = { x, y: by - FS, w: widths[i], h: FS * 1.5 };
+    x += widths[i] + GAP;
+  });
+  ctx.textAlign = "center";
+}
+
 // ---------- main loop ----------
 let last = performance.now();
 function frame(now) {
@@ -537,6 +588,7 @@ function frame(now) {
       line.linkRect = { x: line.rect.x + prefixW, y: line.rect.y, w: wordW, h: line.rect.h };
     }
   }
+  drawFooter();
   update(dt);
   const time = now / 1000;
   if (marker) drawMarker(marker, time);
