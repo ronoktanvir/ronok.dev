@@ -191,8 +191,10 @@ function spawnGuy() {
     target: null,
   };
   marker = null;
-  hint.style.opacity = 0;
-  hint.style.pointerEvents = "none"; // once summoned, the hint is just a ghost
+  // fade to a faint "again?" that keeps respawning him (mobile's way to swap variants)
+  hint.textContent = "again?";
+  hint.style.opacity = 0.4;
+  hint.style.top = "62%"; // slide below him so it doesn't sit on his face
   stopTalking();
   talking = THROWN[stache ? 1 : 0];
   talking.audio.currentTime = 0;
