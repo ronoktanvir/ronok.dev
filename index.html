@@ -153,7 +153,6 @@ const FOOTER = [
   { label: "github", url: "https://github.com/ronoktanvir", color: "#1a1a1a", rect: null },
   { label: "linkedin", url: "https://www.linkedin.com/in/ronok-tanvir/", color: "#0a66c2", rect: null },
   { label: "ronoktanvir@berkeley.edu", url: "mailto:ronoktanvir@berkeley.edu", color: "#555", rect: null },
-  { label: "coldpillowofdeath", url: null, color: "#107c10", xbox: true, rect: null }, // gamertag, just for fun
 ];
 
 // toss reactions per variant: "HEY!!! ouch!", "oh dear... Ow! jeez.", "[emphasis] Ow. That hurt."
@@ -534,33 +533,15 @@ function stopTalking() {
 function drawFooter() {
   const FS = Math.round(15 * Math.min(1, W / 600));
   const GAP = 26;
-  const ORB = FS * 0.55; // xbox orb radius
   ctx.font = "500 " + FS + "px Avenir Next, Futura, Helvetica, sans-serif";
   ctx.textAlign = "left";
-  const widths = FOOTER.map((f) => ctx.measureText(f.label).width + (f.xbox ? ORB * 2 + 6 : 0));
-  let x = W / 2 - (widths.reduce((a, b) => a + b, 0) + GAP * (FOOTER.length - 1)) / 2;
+  const widths = FOOTER.map((f) => ctx.measureText(f.label).width);
+  // right-aligned row tucked into the bottom-right corner
+  let x = W - 20 - (widths.reduce((a, b) => a + b, 0) + GAP * (FOOTER.length - 1));
   const by = H - 22;
   FOOTER.forEach((f, i) => {
-    let tx = x;
-    if (f.xbox) {
-      // little xbox orb
-      const cx = x + ORB, cy = by - FS * 0.32;
-      ctx.fillStyle = "#107c10";
-      ctx.beginPath();
-      ctx.arc(cx, cy, ORB, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = "#fff";
-      ctx.lineWidth = FS * 0.14;
-      ctx.lineCap = "round";
-      const r = ORB * 0.5;
-      ctx.beginPath();
-      ctx.moveTo(cx - r, cy - r); ctx.quadraticCurveTo(cx, cy, cx + r, cy + r);
-      ctx.moveTo(cx + r, cy - r); ctx.quadraticCurveTo(cx, cy, cx - r, cy + r);
-      ctx.stroke();
-      tx += ORB * 2 + 6;
-    }
     ctx.fillStyle = f.color;
-    ctx.fillText(f.label, tx, by);
+    ctx.fillText(f.label, x, by);
     f.rect = { x, y: by - FS, w: widths[i], h: FS * 1.5 };
     x += widths[i] + GAP;
   });
