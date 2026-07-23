@@ -194,7 +194,7 @@ function spawnGuy() {
   // fade to a faint "again?" respawn button; he lands right on top of it,
   // so it's only clickable once he's walked off it
   hint.textContent = "again?";
-  hint.style.opacity = 0.4;
+  hint.style.opacity = 0.22;
   stopTalking();
   talking = THROWN[stache ? 1 : 0];
   talking.audio.currentTime = 0;
