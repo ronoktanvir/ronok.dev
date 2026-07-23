@@ -148,10 +148,11 @@ const LINES = [
     rect: null,
   },
 ];
-// toss reactions: [0] "HEY!!!!!! ouch! ... [embarrassed]", [1] "oh dear... Ow! [sigh] jeez."
+// toss reactions per variant: "HEY!!! ouch!", "oh dear... Ow! jeez.", "[emphasis] Ow. That hurt."
 const THROWN = [
   voice("thrown.mp3", "000011101110111000000000000000000000000000001110111000111000000000000000000000000111011101110111000111000111011000000000"),
   voice("thrown_m.mp3", "00111011101110000000000000000001110111011000000000000000000001110000000000000111011101100000"),
+  voice("thrown_h.mp3", "011101110111011101110110000000000000000000000000111011101110111011101011000000000"),
 ];
 
 let talking = null; // the voice currently being read aloud
