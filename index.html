@@ -53,7 +53,7 @@ function loadSet(p) {
     plant: loadImg(p + "plant.png"),
   };
 }
-const SPRITES = [loadSet(""), loadSet("m")];
+const SPRITES = [loadSet(""), loadSet("m"), loadSet("h")]; // plain, mustache, propeller hat
 let spawnCount = 0;
 
 // ---------- clickable text lines, each with a voice clip + mouth timeline ----------
@@ -72,8 +72,9 @@ const LINES = [
     ascent: 60,
     height: 76,
     voices: [
-      voice("hello.mp3", "000011101110111011101110111000111011101110000000000000000000111010011101100110000000"),
-      voice("hello_m.mp3", "00011101100000001110111010001011101110111000000"),
+      [voice("hello.mp3", "000011101110111011101110111000111011101110000000000000000000111010011101100110000000")],
+      [voice("hello_m.mp3", "00011101100000001110111010001011101110111000000")],
+      [voice("hello_h.mp3", "01110111011101110111011101110111011101100000000")],
     ],
     rect: null,
   },
@@ -87,8 +88,12 @@ const LINES = [
     ascent: 19,
     height: 27,
     voices: [
-      voice("rl.mp3", "0000011101100000000000000000000111011100011101001110000111011101110100011101110111000000000000000000000111011101110000000000000111001110000010000000"),
-      voice("rl_m.mp3", "0111011100000000000000001110111011101011101011101110111011100111011101110100000"),
+      [voice("rl.mp3", "0000011101100000000000000000000111011100011101001110000111011101110100011101110111000000000000000000000111011101110000000000000111001110000010000000")],
+      [voice("rl_m.mp3", "0111011100000000000000001110111011101011101011101110111011100111011101110100000")],
+      [
+        voice("rl_h1.mp3", "0111011101110111011101110111011101110111011101110111011101110111011101010000000"),
+        voice("rl_h2.mp3", "01110111011101110111011101110111011101110111011101110111011101110010000000000"),
+      ],
     ],
     rect: null,
   },
@@ -102,8 +107,9 @@ const LINES = [
     ascent: 20,
     height: 30,
     voices: [
-      voice("berkeley.mp3", "0001110011101110111011101100000111011101110111011101110111011100001110111011101110011101001110100111011101110111001110000000"),
-      voice("berkeley_m.mp3", "011101110111011101110011100111011100001110111011101110111011100111000111010000"),
+      [voice("berkeley.mp3", "0001110011101110111011101100000111011101110111011101110111011100001110111011101110011101001110100111011101110111001110000000")],
+      [voice("berkeley_m.mp3", "011101110111011101110011100111011100001110111011101110111011100111000111010000")],
+      [voice("berkeley_h.mp3", "0111001110111011101110111011101110111011101110111011101110111011101110111011101011101110111011101110111011100010000000")],
     ],
     rect: null,
   },
@@ -117,8 +123,9 @@ const LINES = [
     ascent: 20,
     height: 30,
     voices: [
-      voice("mle.mp3", "010111011101110111011101110011101110111011101110001110111011101000000000"),
-      voice("mle_m.mp3", "011101110110111000111011101110110111011101110111011101110111011101110111011101110111011101110111000000"),
+      [voice("mle.mp3", "010111011101110111011101110011101110111011101110001110111011101000000000")],
+      [voice("mle_m.mp3", "011101110110111000111011101110110111011101110111011101110111011101110111011101110111011101110111000000")],
+      [voice("mle_h.mp3", "0111011101110111011101110100000000011101110111011101110111011100000")],
     ],
     link: { word: "halluminate", url: "https://www.halluminate.ai/" },
     linkRect: null,
@@ -134,8 +141,9 @@ const LINES = [
     ascent: 20,
     height: 30,
     voices: [
-      voice("cahl.mp3", "000011101110111011101110111011101110110111011101110111011101110111011101110011100000"),
-      voice("cahl_m.mp3", "011101110111011101110011101110111011101110110011101110111011101110111011100000"),
+      [voice("cahl.mp3", "000011101110111011101110111011101110110111011101110111011101110111011101110011100000")],
+      [voice("cahl_m.mp3", "011101110111011101110011101110111011101110110011101110111011101110111011100000")],
+      [voice("cahl_h.mp3", "01110111011101110111011101101110111011101110111011101110000000")],
     ],
     rect: null,
   },
@@ -147,7 +155,7 @@ const THROWN = [
 ];
 
 let talking = null; // the voice currently being read aloud
-for (const v of [...LINES.flatMap((l) => l.voices), ...THROWN])
+for (const v of [...LINES.flatMap((l) => l.voices.flat()), ...THROWN])
   v.audio.addEventListener("ended", () => (talking = null));
 const mouthOpen = () =>
   talking.mouth[Math.min(Math.floor(talking.audio.currentTime * MOUTH_FPS), talking.mouth.length - 1)] === "1";
@@ -168,10 +176,10 @@ function spawnGuy() {
   const fromLeft = Math.random() < 0.5;
   const startX = fromLeft ? -80 : W + 80;
   const startY = H * (0.3 + Math.random() * 0.4);
-  const stache = spawnCount++ % 2 === 1;
+  const variant = spawnCount++ % SPRITES.length;
   guy = {
-    sprites: SPRITES[stache ? 1 : 0],
-    stache,
+    sprites: SPRITES[variant],
+    variant,
     x: startX,
     y: startY,
     startX,
@@ -196,9 +204,11 @@ function spawnGuy() {
   hint.textContent = "again?";
   hint.style.opacity = 0.22;
   stopTalking();
-  talking = THROWN[stache ? 1 : 0];
-  talking.audio.currentTime = 0;
-  talking.audio.play();
+  if (THROWN[variant]) {
+    talking = THROWN[variant];
+    talking.audio.currentTime = 0;
+    talking.audio.play();
+  }
 }
 
 const GRAVITY = 1600;
@@ -450,7 +460,8 @@ function walkTo(x, y) {
 
 function startTalking(spot) {
   if (talking) talking.audio.pause();
-  talking = spot.line.voices[guy && guy.stache ? 1 : 0];
+  const takes = spot.line.voices[guy ? guy.variant : 0];
+  talking = takes[Math.floor(Math.random() * takes.length)]; // lines with multiple takes alternate
   talking.audio.currentTime = 0;
   talking.audio.play();
   if (guy) {
