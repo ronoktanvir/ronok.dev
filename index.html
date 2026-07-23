@@ -2,11 +2,11 @@
 <html>
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>ronok</title>
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #fff; }
-  canvas { display: block; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #fff; touch-action: none; }
+  canvas { display: block; touch-action: none; }
   #hint {
     position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
     font-family: "Comic Sans MS", "Chalkboard SE", sans-serif;
@@ -16,7 +16,7 @@
 </style>
 </head>
 <body>
-<div id="hint">press space</div>
+<div id="hint">press space (and sound on)</div>
 <canvas id="c"></canvas>
 <script>
 const canvas = document.getElementById("c");
@@ -64,9 +64,11 @@ const voice = (file, mouth) => ({ audio: new Audio("audio/" + file), mouth });
 const LINES = [
   {
     text: "Ronok Tanvir",
-    font: "600 74px Helvetica, Arial, sans-serif",
+    style: "600",
+    px: 74,
+    family: "Helvetica, Arial, sans-serif",
     color: "#1a1a1a",
-    baseline: (h) => h * 0.28 - 45,
+    dy: -45,
     ascent: 60,
     height: 76,
     voices: [
@@ -77,9 +79,11 @@ const LINES = [
   },
   {
     text: "(reinforcement learning enthusiast)",
-    font: "italic 22px Georgia, Palatino, serif",
+    style: "italic",
+    px: 22,
+    family: "Georgia, Palatino, serif",
     color: "#555",
-    baseline: (h) => h * 0.28 - 10,
+    dy: -10,
     ascent: 19,
     height: 27,
     voices: [
@@ -90,9 +94,11 @@ const LINES = [
   },
   {
     text: "computer & data science @ berkeley",
-    font: "500 24px Avenir Next, Futura, Helvetica, sans-serif",
+    style: "500",
+    px: 24,
+    family: "Avenir Next, Futura, Helvetica, sans-serif",
     color: "#2d5da8",
-    baseline: (h) => h * 0.28 + 35,
+    dy: 35,
     ascent: 20,
     height: 30,
     voices: [
@@ -103,9 +109,11 @@ const LINES = [
   },
   {
     text: "currently MLE intern @ halluminate",
-    font: "500 24px Avenir Next, Futura, Helvetica, sans-serif",
+    style: "500",
+    px: 24,
+    family: "Avenir Next, Futura, Helvetica, sans-serif",
     color: "#3d3bc3",
-    baseline: (h) => h * 0.28 + 69,
+    dy: 69,
     ascent: 20,
     height: 30,
     voices: [
@@ -118,9 +126,11 @@ const LINES = [
   },
   {
     text: "previously researcher @ CAHL labs",
-    font: "500 24px Avenir Next, Futura, Helvetica, sans-serif",
+    style: "500",
+    px: 24,
+    family: "Avenir Next, Futura, Helvetica, sans-serif",
     color: "#fdb515",
-    baseline: (h) => h * 0.28 + 103,
+    dy: 103,
     ascent: 20,
     height: 30,
     voices: [
@@ -375,6 +385,31 @@ window.addEventListener("mousedown", (e) => {
   if (e.button === 0) interact(e.clientX, e.clientY);
 });
 
+// touch: first tap summons him; tap text to hear it; tap anywhere else to send him there
+canvas.addEventListener(
+  "touchstart",
+  (e) => {
+    e.preventDefault(); // no scroll/zoom, no synthetic mouse events
+    const t = e.touches[0];
+    const x = t.clientX, y = t.clientY;
+    if (!guy) {
+      spawnGuy();
+      return;
+    }
+    if (LINES.some((l) => inRect(l.rect, x, y))) {
+      interact(x, y);
+      return;
+    }
+    if (guy.state !== "thrown" && guy.state !== "bounce") {
+      stopTalking();
+      guy.target = { x, y };
+      guy.state = "walk";
+      marker = { x, y };
+    }
+  },
+  { passive: false }
+);
+
 window.addEventListener("mousemove", (e) => {
   const overLink = LINES.some((l) => l.link && inRect(l.linkRect, e.clientX, e.clientY));
   const overText = guy && LINES.some((l) => inRect(l.rect, e.clientX, e.clientY));
@@ -424,12 +459,13 @@ function frame(now) {
   last = now;
   ctx.clearRect(0, 0, W, H);
   ctx.textAlign = "center";
+  const ts = Math.min(1, W / 600); // shrink text on narrow (mobile) screens
   for (const line of LINES) {
     ctx.fillStyle = line.color;
-    ctx.font = line.font;
-    const by = line.baseline(H);
+    ctx.font = line.style + " " + Math.round(line.px * ts) + "px " + line.family;
+    const by = H * 0.28 + line.dy * ts;
     const tw = ctx.measureText(line.text).width;
-    line.rect = { x: W / 2 - tw / 2, y: by - line.ascent, w: tw, h: line.height };
+    line.rect = { x: W / 2 - tw / 2, y: by - line.ascent * ts, w: tw, h: line.height * ts };
     ctx.fillText(line.text, W / 2, by);
     if (line.link) {
       const prefixW = ctx.measureText(line.text.slice(0, line.text.indexOf(line.link.word))).width;
