@@ -39,7 +39,7 @@ resize();
 
 // ---------- character sprites: walk cycle + sitting + face-planted ----------
 // two sets: clean-shaven ("") and mustachioed ("m" prefix); space alternates
-const V = "?v=8";
+const V = "?v=9";
 function loadImg(f) {
   const img = new Image();
   img.src = "sprites/" + f + V;
@@ -154,6 +154,7 @@ const THROWN = [
   voice("thrown_m.mp3", "00111011101110000000000000000001110111011000000000000000000001110000000000000111011101100000"),
   voice("thrown_h.mp3", "011101110111011101110110000000000000000000000000111011101110111011101011000000000"),
 ];
+THROWN[2].atPlant = true; // hat guy says "Ow." at the face-plant, not mid-air
 
 let talking = null; // the voice currently being read aloud
 for (const v of [...LINES.flatMap((l) => l.voices.flat()), ...THROWN])
@@ -205,10 +206,13 @@ function spawnGuy() {
   hint.textContent = "again?";
   hint.style.opacity = 0.22;
   stopTalking();
-  if (THROWN[variant]) {
-    talking = THROWN[variant];
-    talking.audio.currentTime = 0;
-    talking.audio.play();
+  const tv = THROWN[variant];
+  if (tv && tv.atPlant) {
+    guy.tossVoice = tv; // held until he hits the ground
+  } else if (tv) {
+    talking = tv;
+    tv.audio.currentTime = 0;
+    tv.audio.play();
   }
 }
 
@@ -244,6 +248,12 @@ function update(dt) {
         guy.state = "planted"; // lie face-down for a beat after the crash
         guy.plantT = 0.9;
         guy.spin = 0;
+        if (guy.tossVoice) {
+          talking = guy.tossVoice;
+          talking.audio.currentTime = 0;
+          talking.audio.play();
+          guy.tossVoice = null;
+        }
       }
     }
   } else if (guy.state === "planted") {
